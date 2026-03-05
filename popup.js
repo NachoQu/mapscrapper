@@ -11,7 +11,13 @@ document.addEventListener('DOMContentLoaded', function () {
         var progressText = document.getElementById('progressText');
         var statsContainer = document.getElementById('statsContainer');
 
-        if (currentTab && currentTab.url.includes('://www.google.com/maps/search')) {
+        var isGoogleMapsTab = false;
+        if (currentTab && currentTab.url) {
+            isGoogleMapsTab = /^https:\/\/(www\.)?google\.[^/]+\/maps(\/|\?|$)/i.test(currentTab.url)
+                || /^https:\/\/maps\.google\.[^/]+\//i.test(currentTab.url);
+        }
+
+        if (isGoogleMapsTab) {
             document.getElementById('message').textContent = 'Listo para scrapear Google Maps';
             actionButton.disabled = false;
             actionButton.classList.add('enabled');
@@ -19,8 +25,8 @@ document.addEventListener('DOMContentLoaded', function () {
             var messageElement = document.getElementById('message');
             messageElement.innerHTML = '';
             var linkElement = document.createElement('a');
-            linkElement.href = 'https://www.google.com/maps/search/';
-            linkElement.textContent = 'Abrí una búsqueda de Google Maps primero.';
+            linkElement.href = 'https://www.google.com/maps';
+            linkElement.textContent = 'Abrí Google Maps (búsqueda o ficha) primero.';
             linkElement.target = '_blank';
             messageElement.appendChild(linkElement);
 

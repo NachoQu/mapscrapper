@@ -321,6 +321,7 @@ async function scrapeData() {
             const addressMatch = txt.match(/\d+[\w\s,.-]{8,}/);
             address = addressMatch ? cleanText(addressMatch[0]) : '';
         }
+    }
 
         const mapsAddressLink = address
             ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`

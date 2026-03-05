@@ -1,147 +1,335 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>Google Maps Easy Scrape</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GeoScouting by Plano</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { 
-      min-width: 570px; 
-      padding: 20px; 
-      font-family: 'Poppins', sans-serif; 
+    :root {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f8faff;
+      --text: #161b26;
+      --muted: #6b7280;
+      --primary: #6a35ff;
+      --primary-strong: #4b20cf;
+      --border: #e5e7eb;
+      --shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+      --radius: 14px;
     }
-    #message {
-      font-size: 16px;
-      padding-top: 20px;
-      padding-bottom: 20px;
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 670px;
+      background: radial-gradient(circle at top left, #eef4ff, var(--bg) 45%);
+      color: var(--text);
+      font-family: 'Poppins', sans-serif;
+      padding: 18px;
+    }
+
+    .app {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 18px 20px 10px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%);
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 2px solid #f8c14b;
+      background: #ffb31a;
+      object-fit: cover;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    h1 {
+      font-size: 34px;
+      line-height: 1.1;
+      margin: 0;
+      font-weight: 700;
+      letter-spacing: -0.8px;
+    }
+
+    .brand {
+      margin-top: 8px;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 18px;
+    }
+
+    .brand a {
+      color: var(--primary);
       text-decoration: none;
     }
-    .button {
 
-      padding: 10px 20px; 
+    .brand a:hover { text-decoration: underline; }
+
+    .content { padding: 14px 20px 20px; }
+
+    #message {
+      font-size: 22px;
+      margin: 8px 0 14px;
+      font-weight: 500;
+    }
+
+    #message a {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    #message a:hover { text-decoration: underline; }
+
+    #progressContainer {
+      display: none;
+      margin: 12px 0;
+    }
+
+    #progressBar {
+      width: 100%;
+      background-color: #e8edf5;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid #d8dfeb;
+    }
+
+    #progressFill {
+      width: 0%;
+      height: 18px;
+      background: linear-gradient(90deg, #6a35ff 0%, #8b63ff 100%);
+      transition: width 0.3s ease;
+      border-radius: 999px;
+    }
+
+    #progressText {
+      text-align: center;
+      margin-top: 6px;
+      font-size: 16px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    #statsContainer {
+      display: none;
+      margin: 12px 0 16px;
+      padding: 14px;
+      background-color: var(--surface-soft);
+      border: 1px solid #dbe7ff;
+      border-left: 4px solid var(--primary);
+      border-radius: var(--radius);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .stat-card {
+      text-align: center;
+      padding: 10px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .stat-value {
+      font-size: 34px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .stat-blue { color: #1677ff; }
+    .stat-green { color: #16a34a; }
+    .stat-yellow { color: #eab308; }
+    .stat-cyan { color: #0891b2; }
+
+    .stat-label {
+      margin-top: 6px;
+      font-size: 18px;
+    }
+
+    .stats-footer {
+      margin-top: 12px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 0.95fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .button {
+      padding: 12px 14px;
       border: none;
       color: white;
-      background-color: #007BFF;
-      cursor: pointer; 
-      transition: background-color 0.3s ease; 
-      border-radius: 20px;
+      background: linear-gradient(135deg, var(--primary) 0%, #0c6cf0 100%);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+      border-radius: 999px;
       font-family: 'Poppins', sans-serif;
+      font-size: 18px;
+      font-weight: 500;
+      box-shadow: 0 6px 14px rgba(22, 119, 255, 0.25);
+      white-space: nowrap;
     }
+
     .button:hover {
-      background-color: #0056b3; 
+      transform: translateY(-1px);
+      background: linear-gradient(135deg, #0f6cea 0%, var(--primary-strong) 100%);
     }
+
+    .button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
     .input {
-      padding: 8px 15px;
-      margin-right: 10px; 
-      border: 1px solid #ddd;
-      border-radius: 20px;
+      padding: 10px 16px;
+      border: 2px solid #d1d5db;
+      border-radius: 999px;
       font-family: 'Poppins', sans-serif;
+      font-size: 18px;
+      outline: none;
+      width: 100%;
+      background: #fff;
     }
+
+    .input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.16);
+    }
+
+    .table-responsive {
+      max-height: 420px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      font-size: 14px;
     }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
+
+    th,
+    td {
+      border: 1px solid #e5e7eb;
+      padding: 10px;
+      vertical-align: top;
     }
+
     th {
-      padding-top: 12px;
-      padding-bottom: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 1;
       text-align: left;
-      background-color: #dddddd;
+      background: #e9ecf3;
+      font-size: 15px;
     }
-    h1 {
-      font-weight: 600;
-      font-size: 24px;
-      margin: 0;
-    }
-    h4 {
-      margin: 0;
-      padding-top: 10px;
-    }
-    h4 a {
-      color: #676767;
-      text-decoration: none;
-    }
-    h4 a:hover {
-      color: #007BFF;
-      text-decoration: none;
-    }
+
     .lead-high {
-      background-color: #d4edda !important;
-      font-weight: bold;
+      background-color: #dcfce7 !important;
+      font-weight: 700;
     }
-    .lead-medium {
-      background-color: #fff3cd !important;
-    }
-    .lead-low {
-      background-color: #f8d7da !important;
-    }
-    .stats-highlight {
-      color: #28a745;
-      font-weight: bold;
-    }
-    .table-responsive {
-      max-height: 400px;
-      overflow-y: auto;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-    }
-  </style>  
+
+    .lead-medium { background-color: #fef9c3 !important; }
+    .lead-low { background-color: #fee2e2 !important; }
+  </style>
 </head>
 <body>
-  <h1>&#x1F5FA;&#xFE0F; Google Maps Easy Scrape</h1>
-  <h4>
-    <a href="https://www.youtube.com/@itsmikepowers" target="_blank">By Mike</a> 
-    <a href="https://www.buymeacoffee.com/itsmikepowers" target="_blank">Buy Me A Coffee :)</a>
-  </h4>
-  <div id="message">Checking URL...</div>
-  <div id="progressContainer" style="display: none; margin: 10px 0;">
-    <div id="progressBar" style="width: 100%; background-color: #f0f0f0; border-radius: 10px; overflow: hidden;">
-      <div id="progressFill" style="width: 0%; height: 20px; background-color: #007BFF; transition: width 0.3s ease;"></div>
+  <div class="app">
+    <div class="header">
+      <div class="title-row">
+        <img class="logo" src="plano-logo.svg" alt="Plano logo" />
+        <h1>GeoScouting by Plano</h1>
+      </div>
+      <div class="brand">By <a href="https://planoweb.com.ar" target="_blank" rel="noopener noreferrer">planoweb.com.ar</a></div>
     </div>
-    <div id="progressText" style="text-align: center; margin-top: 5px; font-size: 14px; color: #666;"></div>
-  </div>
-  <div id="statsContainer" style="display: none; margin: 10px 0; padding: 15px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #007BFF;">
-    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 14px;">
-      <div style="text-align: center; padding: 8px; background: white; border-radius: 6px;">
-        <div style="font-size: 18px; font-weight: bold; color: #007BFF;" id="totalLeads">0</div>
-        <div>Total Leads</div>
+
+    <div class="content">
+      <div id="message">Checking URL...</div>
+
+      <div id="progressContainer">
+        <div id="progressBar">
+          <div id="progressFill"></div>
+        </div>
+        <div id="progressText"></div>
       </div>
-      <div style="text-align: center; padding: 8px; background: white; border-radius: 6px;">
-        <div style="font-size: 18px; font-weight: bold; color: #28a745;" id="highValueLeads">0</div>
-        <div>Alto Valor (8-10)</div>
+
+      <div id="statsContainer">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value stat-blue" id="totalLeads">0</div>
+            <div class="stat-label">Total Leads</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value stat-green" id="highValueLeads">0</div>
+            <div class="stat-label">Alto Valor (8-10)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value stat-yellow" id="withPhone">0</div>
+            <div class="stat-label">Con Teléfono</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value stat-cyan" id="withEmail">0</div>
+            <div class="stat-label">Con Email</div>
+          </div>
+        </div>
+        <div class="stats-footer">
+          <span>Con Web: <strong id="withWeb">0</strong></span> |
+          <span>Con Redes: <strong id="withSocial">0</strong></span> |
+          <span>Promedio Rating: <strong id="avgRating">0</strong></span>
+        </div>
       </div>
-      <div style="text-align: center; padding: 8px; background: white; border-radius: 6px;">
-        <div style="font-size: 18px; font-weight: bold; color: #ffc107;" id="withPhone">0</div>
-        <div>Con Teléfono</div>
+
+      <div class="controls">
+        <button id="actionButton" class="button" disabled>Scrape Google Maps</button>
+        <button id="downloadCsvButton" class="button" disabled>Download as CSV</button>
+        <button id="downloadJsonButton" class="button" disabled>Download as JSON</button>
+        <input type="text" id="filenameInput" class="input" placeholder="Enter file name" />
       </div>
-      <div style="text-align: center; padding: 8px; background: white; border-radius: 6px;">
-        <div style="font-size: 18px; font-weight: bold; color: #17a2b8;" id="withEmail">0</div>
-        <div>Con Email</div>
+
+      <div class="table-responsive">
+        <table id="resultsTable">
+          <thead>
+            <tr></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </div>
     </div>
-    <div style="margin-top: 10px; text-align: center; font-size: 12px; color: #666;">
-      <span>Con Web: <strong id="withWeb">0</strong></span> | 
-      <span>Con Redes: <strong id="withSocial">0</strong></span> | 
-      <span>Promedio Rating: <strong id="avgRating">0</strong></span>
-    </div>
   </div>
-  <button id="actionButton" class="button" disabled>Scrape Google Maps</button>
-  <button id="downloadCsvButton" class="button" style="margin-left: 10px;" disabled>Download as CSV</button>
-  <button id="downloadJsonButton" class="button" style="margin-left: 10px;" disabled>Download as JSON</button>
-  <input type="text" id="filenameInput" class="input" placeholder="Enter file name" style="margin-left: 10px;" />
-  <div class="table-responsive">
-    <table id="resultsTable">
-      <thead>
-        <tr>
-        </tr>
-      </thead>
-      <tbody>
-      </tbody>
-    </table>
-  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

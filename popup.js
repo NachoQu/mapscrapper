@@ -205,6 +205,22 @@ async function scrapeData() {
         return (value || '').replace(/\s+/g, ' ').trim();
     }
 
+    function normalizeForCompare(value) {
+        return cleanText(value)
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9\s]/g, '');
+    }
+
+    function areSimilarTitles(a, b) {
+        const left = normalizeForCompare(a);
+        const right = normalizeForCompare(b);
+        if (!left || !right) return false;
+        if (left === right) return true;
+        return left.includes(right) || right.includes(left);
+    }
+
     function normalizePhone(value) {
         const digits = (value || '').replace(/\D/g, '');
         if (!digits) return '';
@@ -219,6 +235,52 @@ async function scrapeData() {
     function toWhatsAppLink(value) {
         const digits = normalizePhone(value).replace(/\D/g, '');
         return digits ? `https://wa.me/${digits}` : '';
+    }
+
+    function isLikelyPhoneCandidate(raw) {
+        const value = cleanText(raw);
+        if (!value) return false;
+
+        const digits = value.replace(/\D/g, '');
+        if (digits.length < 8 || digits.length > 15) return false;
+
+        // Evita códigos postales o numeraciones cortas de calle
+        if (/^\d{4,6}$/.test(digits)) return false;
+
+        return /\+|\(|\)|-|\s/.test(value) || digits.length >= 10;
+    }
+
+    function extractPhoneCandidatesFromText(text) {
+        const rawMatches = cleanText(text).match(/(\+?\d[\d\s\-()]{7,}\d)/g) || [];
+        return rawMatches.filter(isLikelyPhoneCandidate);
+    }
+
+    function uniquePhones(values) {
+        const seen = new Set();
+        const result = [];
+
+        values.forEach(function (value) {
+            const normalized = normalizePhone(value);
+            if (!normalized) return;
+            if (seen.has(normalized)) return;
+            seen.add(normalized);
+            result.push(value);
+        });
+
+        return result;
+    }
+
+    function pickBestPhone(candidates) {
+        const uniques = uniquePhones(candidates);
+        if (!uniques.length) return '';
+
+        uniques.sort(function (a, b) {
+            const aDigits = a.replace(/\D/g, '').length;
+            const bDigits = b.replace(/\D/g, '').length;
+            return bDigits - aDigits;
+        });
+
+        return uniques[0];
     }
 
     function extractEmails(text) {
@@ -253,6 +315,7 @@ async function scrapeData() {
             const addressMatch = txt.match(/\d+[\w\s,.-]{8,}/);
             address = addressMatch ? cleanText(addressMatch[0]) : '';
         }
+    }
 
         const mapsAddressLink = address
             ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
@@ -267,7 +330,8 @@ async function scrapeData() {
         const ratingMatch = ratingAria.match(/([0-9]+[\.,]?[0-9]*)/);
         const reviewsMatch = ratingAria.match(/([0-9.,]+)\s*(reviews|reseñas|reseña)/i);
 
-        const phoneCandidate = cleanText(card.innerText).match(/(\+?\d[\d\s\-()]{7,}\d)/)?.[0] || '';
+        const phoneCandidates = extractPhoneCandidatesFromText(card.innerText || '');
+        const phoneCandidate = pickBestPhone(phoneCandidates);
         const industry = cleanText(card.innerText.split('·')[1] || '');
 
         return {
@@ -284,18 +348,63 @@ async function scrapeData() {
         const href = link ? link.href : '';
 
         card.scrollIntoView({ behavior: 'instant', block: 'center' });
-        card.click();
-        await sleep(1200);
+        if (link) {
+            link.click();
+        } else {
+            card.click();
+        }
+
+        await sleep(500);
+
+        async function waitForDetailReady(expectedTitle) {
+            for (let i = 0; i < 10; i++) {
+                const titleEl = document.querySelector('h1.fontHeadlineLarge, h1.DUwDvf, h1');
+                const detailTitle = cleanText(titleEl?.textContent || '');
+                if (areSimilarTitles(detailTitle, expectedTitle)) {
+                    return true;
+                }
+                await sleep(250);
+            }
+            return false;
+        }
+
+        const detailReady = await waitForDetailReady(fallback.title);
 
         const detailScope = document.querySelector('div[role="main"]') || document.body;
         const detailText = cleanText(detailScope.innerText);
 
-        let phone = '';
-        const phoneButton = detailScope.querySelector('button[data-item-id*="phone"]');
-        if (phoneButton) phone = cleanText(phoneButton.textContent);
-        if (!phone) {
-            phone = detailText.match(/(\+?\d[\d\s\-()]{7,}\d)/)?.[0] || fallback.phone || '';
+        const phoneCandidates = [];
+
+        // 1) Fuentes confiables dentro del detalle
+        if (detailReady) {
+            const phoneButtons = detailScope.querySelectorAll('button[data-item-id*="phone"], button[aria-label*="Phone"], button[aria-label*="Teléfono"], a[href^="tel:"]');
+            phoneButtons.forEach(function (el) {
+                const textValue = cleanText(el.textContent || '');
+                if (isLikelyPhoneCandidate(textValue)) phoneCandidates.push(textValue);
+
+                const hrefValue = cleanText(el.getAttribute && el.getAttribute('href'));
+                if (hrefValue && hrefValue.startsWith('tel:')) {
+                    const telValue = hrefValue.replace('tel:', '').trim();
+                    if (isLikelyPhoneCandidate(telValue)) phoneCandidates.push(telValue);
+                }
+            });
+
+            // 2) Regex limitada a líneas con etiqueta telefónica (evita números repetidos globales)
+            const phoneLines = (detailScope.innerText || '')
+                .split('\n')
+                .filter(line => /tel|phone|llamar/i.test(line));
+
+            phoneLines.forEach(function (line) {
+                phoneCandidates.push(...extractPhoneCandidatesFromText(line));
+            });
         }
+
+        // 3) Fallback por tarjeta de resultado (suele ser el teléfono correcto del negocio)
+        if (fallback.phone) {
+            phoneCandidates.push(fallback.phone);
+        }
+
+        const phone = pickBestPhone(phoneCandidates);
 
         const email = extractEmails(detailText);
         const companyUrl = extractWebsite(detailScope);
